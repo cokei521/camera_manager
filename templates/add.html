@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}添加相机 - 相机地址管理系统{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-white">
+                <ul class="nav nav-tabs card-header-tabs" id="addTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="single-tab" data-bs-toggle="tab"
+                                data-bs-target="#single" type="button" role="tab">
+                            <i class="bi bi-plus-circle"></i> 单个添加
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="batch-tab" data-bs-toggle="tab"
+                                data-bs-target="#batch" type="button" role="tab">
+                            <i class="bi bi-collection"></i> 批量添加
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content">
+                    <!-- 单个添加 -->
+                    <div class="tab-pane fade show active" id="single" role="tabpanel">
+                        <form method="POST" action="{{ url_for('add') }}">
+                            <input type="hidden" name="mode" value="single">
+                            {{ form_fields() }}
+                            <div class="text-end mt-3">
+                                <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-lg"></i> 添加
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- 批量添加 -->
+                    <div class="tab-pane fade" id="batch" role="tabpanel">
+                        <form method="POST" action="{{ url_for('add') }}">
+                            <input type="hidden" name="mode" value="batch">
+                            <div class="alert alert-info">
+                                <i class="bi bi-info-circle"></i>
+                                输入编码范围，系统将自动计算并添加范围内的所有编码（跳过已存在的编码）。
+                                例如：起始 <strong>09-157-01</strong>，结束 <strong>09-157-10</strong>。
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">起始编码 <span class="text-danger">*</span></label>
+                                    <input type="text" name="start_code" class="form-control"
+                                           placeholder="如：09-157-01" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">结束编码 <span class="text-danger">*</span></label>
+                                    <input type="text" name="end_code" class="form-control"
+                                           placeholder="如：09-157-10" required>
+                                </div>
+                            </div>
+                            <hr>
+                            <p class="text-muted small">以下字段将应用于所有批量添加的记录：</p>
+                            {{ form_fields() }}
+                            <div class="text-end mt-3">
+                                <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-lg"></i> 批量添加
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% macro form_fields() %}
+<div class="row g-3">
+    <!-- 相机编码 -->
+    <div class="col-md-6">
+        <label class="form-label">相机编码 <span class="text-danger">*</span></label>
+        <input type="text" name="code" class="form-control" placeholder="如：09-157-01"
+               {% if request.endpoint == 'add' %}required{% endif %}>
+    </div>
+    <!-- 相机类型 -->
+    <div class="col-md-6">
+        <label class="form-label">相机类型</label>
+        <select name="camera_type" class="form-select autocomplete" data-field="camera_type">
+            <option value="">请选择</option>
+            <option>枪机</option><option>球机</option><option>人像</option>
+            <option>结构化</option><option>微卡</option><option>双舱</option>
+            <option>全局</option><option>高点</option><option>全景</option>
+        </select>
+    </div>
+    <!-- 相机名称 751-2024 -->
+    <div class="col-md-6">
+        <label class="form-label">相机名称（751-2024）<span class="text-danger">*</span></label>
+        <input type="text" name="name_751_2024" class="form-control" required>
+    </div>
+    <!-- 相机名称 751-2008 -->
+    <div class="col-md-6">
+        <label class="form-label">相机名称（751-2008）<span class="text-danger">*</span></label>
+        <input type="text" name="name_751_2008" class="form-control" required>
+    </div>
+    <!-- IP地址 -->
+    <div class="col-md-6">
+        <label class="form-label">IP地址</label>
+        <input type="text" name="ip_address" class="form-control" placeholder="如：192.168.1.1">
+    </div>
+    <!-- 经度 -->
+    <div class="col-md-3">
+        <label class="form-label">经度</label>
+        <input type="text" name="longitude" class="form-control" placeholder="如：118.794058">
+    </div>
+    <!-- 纬度 -->
+    <div class="col-md-3">
+        <label class="form-label">纬度</label>
+        <input type="text" name="latitude" class="form-control" placeholder="如：37.264498">
+    </div>
+    <!-- 地理位置 -->
+    <div class="col-md-6">
+        <label class="form-label">地理位置</label>
+        <input type="text" name="location" class="form-control autocomplete" data-field="location">
+    </div>
+    <!-- 所属辖区 -->
+    <div class="col-md-6">
+        <label class="form-label">所属辖区</label>
+        <input type="text" name="district" class="form-control autocomplete" data-field="district">
+    </div>
+    <!-- 运营商 -->
+    <div class="col-md-6">
+        <label class="form-label">运营商</label>
+        <input type="text" name="operator" class="form-control autocomplete" data-field="operator">
+    </div>
+    <!-- 运维单位 -->
+    <div class="col-md-6">
+        <label class="form-label">运维单位</label>
+        <input type="text" name="maintenance_unit" class="form-control autocomplete" data-field="maintenance_unit">
+    </div>
+    <!-- 运维人员 -->
+    <div class="col-md-6">
+        <label class="form-label">运维人员</label>
+        <input type="text" name="maintenance_person" class="form-control autocomplete" data-field="maintenance_person">
+    </div>
+    <!-- 运维人员电话 -->
+    <div class="col-md-6">
+        <label class="form-label">运维人员电话</label>
+        <input type="text" name="maintenance_phone" class="form-control">
+    </div>
+    <!-- 运维单位责任人 -->
+    <div class="col-md-6">
+        <label class="form-label">运维单位责任人</label>
+        <input type="text" name="unit_manager" class="form-control">
+    </div>
+    <!-- 单位责任人电话 -->
+    <div class="col-md-6">
+        <label class="form-label">单位责任人电话</label>
+        <input type="text" name="manager_phone" class="form-control">
+    </div>
+    <!-- 更新日期 -->
+    <div class="col-md-6">
+        <label class="form-label">更新日期 <span class="text-danger">*</span></label>
+        <input type="date" name="update_date" class="form-control" value="{{ today }}">
+    </div>
+    <!-- 备注 -->
+    <div class="col-12">
+        <label class="form-label">备注</label>
+        <textarea name="remark" class="form-control" rows="2"></textarea>
+    </div>
+</div>
+{% endmacro %}
+
+{% block extra_scripts %}
+<script>
+    // 自动补全
+    document.querySelectorAll('.autocomplete').forEach(input => {
+        const field = input.dataset.field;
+        if (!field) return;
+
+        // 创建 datalist
+        const datalistId = `datalist-${field}`;
+        let datalist = document.getElementById(datalistId);
+        if (!datalist) {
+            datalist = document.createElement('datalist');
+            datalist.id = datalistId;
+            document.body.appendChild(datalist);
+        }
+        input.setAttribute('list', datalistId);
+
+        // 聚焦时加载建议
+        input.addEventListener('focus', async () => {
+            if (datalist.children.length === 0) {
+                try {
+                    const resp = await fetch(`/autocomplete?field=${field}`);
+                    const values = await resp.json();
+                    values.forEach(v => {
+                        const option = document.createElement('option');
+                        option.value = v;
+                        datalist.appendChild(option);
+                    });
+                } catch (e) {
+                    console.error('自动补全加载失败:', e);
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

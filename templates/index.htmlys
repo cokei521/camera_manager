@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+{% block title %}相机列表 - 相机地址管理系统{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <!-- 工具栏 -->
+        <div class="row g-2 mb-3 align-items-end">
+            <!-- 搜索 -->
+            <div class="col-md-4">
+                <form method="GET" action="{{ url_for('index') }}" class="d-flex">
+                    <input type="text" name="search" class="form-control form-control-sm"
+                           placeholder="搜索：IP/名称/编码/辖区..."
+                           value="{{ search }}">
+                    <button class="btn btn-sm btn-primary ms-2" type="submit">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    {% if search %}
+                        <a href="{{ url_for('index') }}" class="btn btn-sm btn-outline-secondary ms-1">
+                            <i class="bi bi-x"></i>
+                        </a>
+                    {% endif %}
+                </form>
+            </div>
+
+            <!-- 操作按钮 -->
+            <div class="col-md-8 d-flex justify-content-end">
+                <div class="btn-toolbar" role="toolbar">
+                    <a href="{{ url_for('add') }}" class="btn btn-sm btn-success">
+                        <i class="bi bi-plus-lg"></i> 添加
+                    </a>
+                    <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#importModal">
+                        <i class="bi bi-upload"></i> 导入Excel
+                    </button>
+                    <a href="{{ url_for('export_excel', search=search) }}" class="btn btn-sm btn-outline-success">
+                        <i class="bi bi-download"></i> 导出Excel
+                    </a>
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#columnsModal">
+                        <i class="bi bi-layout-three-columns"></i> 列
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 数据表格 -->
+        <form id="batchForm" method="POST" action="{{ url_for('batch_delete') }}">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th width="40">
+                                <input type="checkbox" id="selectAll" class="form-check-input">
+                            </th>
+                            {% for key, label in all_columns %}
+                                {% if key in selected_columns %}
+                                    <th>{{ label }}</th>
+                                {% endif %}
+                            {% endfor %}
+                            <th width="120">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if cameras %}
+                            {% for cam in cameras %}
+                            <tr>
+                                <td>
+                                    <input type="checkbox" name="ids" value="{{ cam.id }}" class="form-check-input row-check">
+                                </td>
+                                {% for key, label in all_columns %}
+                                    {% if key in selected_columns %}
+                                        <td>
+                                            {% if key == 'code' %}
+                                                <strong>{{ cam.code }}</strong>
+                                            {% elif key == 'longitude' or key == 'latitude' %}
+                                                {{ cam[key] if cam[key] else '-' }}
+                                            {% elif key == 'update_date' %}
+                                                {{ cam.update_date }}
+                                            {% elif key == 'remark' %}
+                                                <small class="text-muted">{{ cam.remark[:30] }}{% if cam.remark|length > 30 %}...{% endif %}</small>
+                                            {% else %}
+                                                {{ cam[key] if cam[key] else '-' }}
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+                                {% endfor %}
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('edit', camera_id=cam.id) }}"
+                                           class="btn btn-outline-primary" title="编辑">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-outline-info"
+                                                title="详情" onclick="showDetail({{ cam.id }})">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-outline-danger"
+                                                title="删除" onclick="confirmDelete({{ cam.id }}, '{{ cam.code }}')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="20" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                                    <p class="mt-2">暂无数据</p>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 批量操作栏 -->
+            {% if cameras %}
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <button type="button" class="btn btn-sm btn-danger" onclick="batchDelete()">
+                    <i class="bi bi-trash"></i> 批量删除
+                </button>
+                <small class="text-muted">
+                    共 {{ pagination.total }} 条记录
+                </small>
+            </div>
+            {% endif %}
+        </form>
+
+        <!-- 分页 -->
+        {% if pagination.pages > 1 %}
+        <nav class="mt-3">
+            <ul class="pagination pagination-sm justify-content-center">
+                {% if pagination.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagination.prev_num }}&search={{ search }}{% for col in selected_columns %}&columns={{ col }}{% endfor %}">
+                            « 上一页
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">« 上一页</span></li>
+                {% endif %}
+
+                {% for p in pagination.iter_pages(left_edge=2, left_current=3, right_current=3, right_edge=2) %}
+                    {% if p %}
+                        <li class="page-item {% if p == pagination.page %}active{% endif %}">
+                            <a class="page-link" href="?page={{ p }}&search={{ search }}{% for col in selected_columns %}&columns={{ col }}{% endfor %}">{{ p }}</a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if pagination.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ pagination.next_num }}&search={{ search }}{% for col in selected_columns %}&columns={{ col }}{% endfor %}">
+                            下一页 »
+                        </a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">下一页 »</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 详情模态框 -->
+<div class="modal fade" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">相机详细信息</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailContent">
+                <p class="text-center text-muted">加载中...</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 导入Excel模态框 -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('import_excel') }}" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title">导入Excel文件</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">选择 Excel 文件（.xlsx）</label>
+                        <input type="file" name="file" class="form-control" accept=".xlsx" required>
+                    </div>
+                    <div class="alert alert-info small mb-0">
+                        <i class="bi bi-info-circle"></i>
+                        第一行为表头，需包含"相机编码"列。已存在的编码将被更新。
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">开始导入</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 列选择模态框 -->
+<div class="modal fade" id="columnsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="GET" action="{{ url_for('index') }}">
+                <input type="hidden" name="search" value="{{ search }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">定制显示列</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        {% for key, label in all_columns %}
+                        <div class="col-6 mb-2">
+                            <label class="form-check">
+                                <input type="checkbox" name="columns" value="{{ key }}"
+                                       class="form-check-input"
+                                       {% if key in selected_columns %}checked{% endif %}>
+                                {{ label }}
+                            </label>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">应用</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // 全选/取消全选
+    document.getElementById('selectAll').addEventListener('change', function() {
+        document.querySelectorAll('.row-check').forEach(cb => cb.checked = this.checked);
+    });
+
+    // 查看详情
+    async function showDetail(id) {
+        const resp = await fetch(`/detail/${id}`);
+        const data = await resp.json();
+        const fields = [
+            ['相机编码', data.code],
+            ['相机名称（751-2024）', data.name_751_2024],
+            ['相机名称（751-2008）', data.name_751_2008],
+            ['相机类型', data.camera_type],
+            ['IP地址', data.ip_address],
+            ['经度', data.longitude],
+            ['纬度', data.latitude],
+            ['地理位置', data.location],
+            ['所属辖区', data.district],
+            ['运营商', data.operator],
+            ['运维单位', data.maintenance_unit],
+            ['运维人员', data.maintenance_person],
+            ['运维人员电话', data.maintenance_phone],
+            ['运维单位责任人', data.unit_manager],
+            ['单位责任人电话', data.manager_phone],
+            ['更新日期', data.update_date],
+            ['备注', data.remark],
+        ];
+        let html = '<table class="table table-sm table-bordered">';
+        fields.forEach(([label, value]) => {
+            html += `<tr><th class="bg-light" width="180">${label}</th><td>${value || '-'}</td></tr>`;
+        });
+        html += '</table>';
+        document.getElementById('detailContent').innerHTML = html;
+
+        new bootstrap.Modal(document.getElementById('detailModal')).show();
+    }
+
+    // 删除确认
+    function confirmDelete(id, code) {
+        if (confirm(`确定要删除相机 "${code}" 吗？此操作不可恢复。`)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/delete/${id}`;
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+
+    // 批量删除
+    function batchDelete() {
+        const checked = document.querySelectorAll('.row-check:checked');
+        if (checked.length === 0) {
+            alert('请先选择要删除的记录');
+            return;
+        }
+        if (confirm(`确定要删除选中的 ${checked.length} 条记录吗？`)) {
+            document.getElementById('batchForm').submit();
+        }
+    }
+</script>
+{% endblock %}
