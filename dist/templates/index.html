@@ -1,0 +1,970 @@
+{% extends "base.html" %}
+
+{% block title %}相机列表 - 相机地址管理系统{% endblock %}
+
+{% block content %}
+{# ─────────────────── 页面标题栏 ─────────────────── #}
+<div class="page-header">
+    <div class="row align-items-center">
+        <div class="col">
+            <h1 class="page-title">
+                <i class="bi bi-camera-video me-2"></i>相机列表
+            </h1>
+            <p class="page-subtitle">管理与监控所有相机设备</p>
+        </div>
+        <div class="col-auto">
+            <div class="stats-pills">
+                <span class="stat-pill">
+                    <i class="bi bi-database"></i>
+                    <strong>{{ pagination.total }}</strong> 台设备
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ─────────────────── 工具栏 ─────────────────── #}
+<div class="toolbar-card">
+    <div class="row g-3 align-items-center">
+        {# 搜索框 #}
+        <div class="col-lg-5">
+            <form method="GET" action="{{ url_for('index') }}" class="search-box">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" name="search"
+                       class="form-control search-input"
+                       placeholder="搜索 IP、名称、编码或辖区..."
+                       value="{{ search }}">
+                {% if search %}
+                    <a href="{{ url_for('index') }}" class="search-clear" title="清除搜索">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                {% endif %}
+            </form>
+        </div>
+
+        {# 操作按钮组 #}
+        <div class="col-lg-7">
+            <div class="action-group">
+                <a href="{{ url_for('add') }}" class="btn btn-accent">
+                    <i class="bi bi-plus-lg"></i>
+                    <span>添加相机</span>
+                </a>
+                <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#importModal">
+                    <i class="bi bi-file-earmark-arrow-up"></i>
+                    <span>导入Excel</span>
+                </button>
+                <a href="{{ url_for('export_excel', search=search) }}" class="btn btn-light">
+                    <i class="bi bi-file-earmark-arrow-down"></i>
+                    <span>导出Excel</span>
+                </a>
+                <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#columnsModal">
+                    <i class="bi bi-layout-three-columns"></i>
+                    <span>列设置</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ─────────────────── 数据表格 ─────────────────── #}
+<div class="table-card">
+    <form id="batchForm" method="POST" action="{{ url_for('batch_delete') }}">
+        {% if cameras %}
+        <div class="batch-bar" id="batchBar" style="display:none;">
+            <div class="d-flex align-items-center justify-content-between">
+                <span class="batch-info">
+                    <i class="bi bi-check-circle-fill text-accent"></i>
+                    已选择 <strong id="selectedCount">0</strong> 项
+                </span>
+                <button type="button" class="btn btn-danger btn-sm" onclick="batchDelete()">
+                    <i class="bi bi-trash"></i> 批量删除
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table data-table">
+                <thead>
+                    <tr>
+                        <th class="col-check">
+                            <div class="checkbox-wrapper">
+                                <input type="checkbox" id="selectAll">
+                                <label for="selectAll"></label>
+                            </div>
+                        </th>
+                        {% for key, label in all_columns %}
+                            {% if key in selected_columns %}
+                            <th class="col-{{ key }}">{{ label }}</th>
+                            {% endif %}
+                        {% endfor %}
+                        <th class="col-actions">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if cameras %}
+                        {% for cam in cameras %}
+                        <tr class="camera-row">
+                            <td class="col-check">
+                                <div class="checkbox-wrapper">
+                                    <input type="checkbox" name="ids" value="{{ cam.id }}"
+                                           class="row-check" id="check_{{ cam.id }}">
+                                    <label for="check_{{ cam.id }}"></label>
+                                </div>
+                            </td>
+                            {% for key, label in all_columns %}
+                                {% if key in selected_columns %}
+                                <td class="col-{{ key }}">
+                                    {% if key == 'code' %}
+                                        <span class="code-badge">{{ cam.code }}</span>
+                                    {% elif key == 'longitude' or key == 'latitude' %}
+                                        <span class="text-mono">{{ cam[key] if cam[key] else '—' }}</span>
+                                    {% elif key == 'update_date' %}
+                                        <span class="text-nowrap">{{ cam.update_date }}</span>
+                                    {% elif key == 'remark' %}
+                                        <span class="remark-text" title="{{ cam.remark }}">
+                                            {{ cam.remark[:40] }}{% if cam.remark|length > 40 %}…{% endif %}
+                                        </span>
+                                    {% elif key == 'name' %}
+                                        <span class="fw-medium">{{ cam[key] if cam[key] else '—' }}</span>
+                                    {% else %}
+                                        {{ cam[key] if cam[key] else '—' }}
+                                    {% endif %}
+                                </td>
+                                {% endif %}
+                            {% endfor %}
+                            <td class="col-actions">
+                                <div class="row-actions">
+                                    <a href="{{ url_for('edit', camera_id=cam.id) }}"
+                                       class="action-icon" title="编辑" data-tooltip="编辑">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+                                    <button type="button" class="action-icon"
+                                            title="详情" onclick="showDetail({{ cam.id }})">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button type="button" class="action-icon action-danger"
+                                            title="删除" data-tooltip="删除"
+                                            onclick="confirmDelete({{ cam.id }}, '{{ cam.code|e }}')">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="20" class="empty-state">
+                                <div class="empty-icon">
+                                    <i class="bi bi-camera-video-off"></i>
+                                </div>
+                                <p class="empty-title">暂无相机数据</p>
+                                <p class="empty-hint">
+                                    {% if search %}
+                                        未找到匹配 "<strong>{{ search }}</strong>" 的结果
+                                    {% else %}
+                                        点击「<i class="bi bi-plus-lg"></i> 添加相机」开始添加设备
+                                    {% endif %}
+                                </p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+        {# 底部信息栏 #}
+        {% if cameras %}
+        <div class="table-footer">
+            <span class="text-muted small">
+                共 <strong>{{ pagination.total }}</strong> 条记录
+            </span>
+        </div>
+        {% endif %}
+    </form>
+</div>
+
+{# ─────────────────── 分页 ─────────────────── #}
+{% if pagination.pages > 1 %}
+<nav class="pagination-wrapper">
+    <ul class="pagination-custom">
+        <li class="page-item-custom {{ 'disabled' if not pagination.has_prev }}">
+            <a href="{% if pagination.has_prev %}?page={{ pagination.prev_num }}&search={{ search }}{% for col in selected_columns %}&columns={{ col }}{% endfor %}{% else %}#{% endif %}"
+               class="page-link-custom">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+        </li>
+
+        {% for p in pagination.iter_pages(left_edge=1, left_current=2, right_current=3, right_edge=1) %}
+            {% if p %}
+                <li class="page-item-custom {{ 'active' if p == pagination.page }}">
+                    <a href="?page={{ p }}&search={{ search }}{% for col in selected_columns %}&columns={{ col }}{% endfor %}"
+                       class="page-link-custom">{{ p }}</a>
+                </li>
+            {% else %}
+                <li class="page-item-custom disabled">
+                    <span class="page-link-custom">…</span>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        <li class="page-item-custom {{ 'disabled' if not pagination.has_next }}">
+            <a href="{% if pagination.has_next %}?page={{ pagination.next_num }}&search={{ search }}{% for col in selected_columns %}&columns={{ col }}{% endfor %}{% else %}#{% endif %}"
+               class="page-link-custom">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+
+{# ─────────────────── 详情模态框 ─────────────────── #}
+<div class="modal fade modal-modern" id="detailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-info-circle me-2"></i>相机详细信息
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="detailContent">
+                <div class="skeleton-loading">
+                    <div class="skeleton-line skeleton-line-sm"></div>
+                    <div class="skeleton-line"></div>
+                    <div class="skeleton-line skeleton-line-lg"></div>
+                    <div class="skeleton-line"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{# ─────────────────── 导入模态框 ─────────────────── #}
+<div class="modal fade modal-modern" id="importModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('import_excel') }}" enctype="multipart/form-data">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-file-earmark-arrow-up me-2"></i>导入Excel文件
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="upload-zone" id="uploadZone">
+                        <i class="bi bi-cloud-upload upload-icon"></i>
+                        <p class="upload-text">拖拽文件到此处或点击下方选择</p>
+                        <input type="file" name="file" class="form-control mt-3"
+                               accept=".xlsx,.xls" required id="importFile">
+                    </div>
+                    <div class="alert alert-soft mt-3 mb-0">
+                        <i class="bi bi-info-circle me-2"></i>
+                        第一行为表头，需包含<b>"相机编码"</b>列。已存在的编码将被更新。
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-accent">
+                        <i class="bi bi-upload me-1"></i>开始导入
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{# ─────────────────── 列设置模态框 ─────────────────── #}
+<div class="modal fade modal-modern" id="columnsModal" tabindex="-1">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+        <div class="modal-content">
+            <form method="GET" action="{{ url_for('index') }}">
+                <input type="hidden" name="search" value="{{ search }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-layout-three-columns me-2"></i>定制显示列
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="column-check-list">
+                        {% for key, label in all_columns %}
+                        <label class="column-check-item">
+                            <input type="checkbox" name="columns" value="{{ key }}"
+                                   {% if key in selected_columns %}checked{% endif %}>
+                            <span class="check-mark"></span>
+                            <span class="column-label">{{ label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-accent">
+                        <i class="bi bi-check2 me-1"></i>应用
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ── 全选复选框 ──
+document.getElementById('selectAll').addEventListener('change', function() {
+    const checked = this.checked;
+    document.querySelectorAll('.row-check').forEach(cb => {
+        cb.checked = checked;
+    });
+    updateBatchBar();
+});
+
+// ── 单个复选框变化 ──
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('row-check')) {
+        updateBatchBar();
+        // 同步全选框状态
+        const all = document.querySelectorAll('.row-check');
+        const total = all.length;
+        const checked = document.querySelectorAll('.row-check:checked').length;
+        document.getElementById('selectAll').checked = total > 0 && checked === total;
+        document.getElementById('selectAll').indeterminate = checked > 0 && checked < total;
+    }
+});
+
+// ── 批量操作栏 ──
+function updateBatchBar() {
+    const count = document.querySelectorAll('.row-check:checked').length;
+    const bar = document.getElementById('batchBar');
+    const counter = document.getElementById('selectedCount');
+
+    if (count > 0) {
+        bar.style.display = 'block';
+        counter.textContent = count;
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+function batchDelete() {
+    const checked = document.querySelectorAll('.row-check:checked');
+    if (checked.length === 0) return;
+
+    showToast(`确定要删除选中的 <b>${checked.length}</b> 台相机吗？此操作不可恢复。`, 'warning', true, () => {
+        document.getElementById('batchForm').submit();
+    });
+}
+
+// ── 单个删除 ──
+function confirmDelete(id, code) {
+    showToast(`确定要删除相机 <b>"${code}"</b> 吗？此操作不可恢复。`, 'warning', true, () => {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("delete", camera_id=0) }}'.replace('0', id);
+        document.body.appendChild(form);
+        form.submit();
+    });
+}
+
+// ── 查看详情 ──
+async function showDetail(id) {
+        const resp = await fetch(`/detail/${id}`);
+        const data = await resp.json();
+        const fields = [
+            ['相机编码', data.code],
+            ['相机名称（751-2024）', data.name_751_2024],
+            ['相机名称（751-2008）', data.name_751_2008],
+            ['相机类型', data.camera_type],
+            ['IP地址', data.ip_address],
+            ['经度', data.longitude],
+            ['纬度', data.latitude],
+            ['地理位置', data.location],
+            ['所属辖区', data.district],
+            ['运营商', data.operator],
+            ['运维单位', data.maintenance_unit],
+            ['运维人员', data.maintenance_person],
+            ['运维人员电话', data.maintenance_phone],
+            ['运维单位责任人', data.unit_manager],
+            ['单位责任人电话', data.manager_phone],
+            ['更新日期', data.update_date],
+            ['备注', data.remark],
+        ];
+        let html = '<table class="table table-sm table-bordered">';
+        fields.forEach(([label, value]) => {
+            html += `<tr><th class="bg-light" width="180">${label}</th><td>${value || '-'}</td></tr>`;
+        });
+        html += '</table>';
+        document.getElementById('detailContent').innerHTML = html;
+
+        new bootstrap.Modal(document.getElementById('detailModal')).show();
+    }
+
+// ── 文件拖拽上传 ──
+const uploadZone = document.getElementById('uploadZone');
+if (uploadZone) {
+    ['dragenter', 'dragover'].forEach(e => {
+        uploadZone.addEventListener(e, (ev) => {
+            ev.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+    });
+    ['dragleave', 'drop'].forEach(e => {
+        uploadZone.addEventListener(e, (ev) => {
+            ev.preventDefault();
+            uploadZone.classList.remove('dragover');
+        });
+    });
+    uploadZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            document.getElementById('importFile').files = files;
+        }
+    });
+}
+
+// ── Toast 提示 ──
+function showToast(message, type, showCancel, onConfirm) {
+    // 简单的确认对话框替代（如项目中已有 toast 组件可替换）
+    if (showCancel) {
+        if (confirm(message.replace(/<[^>]*>/g, ''))) {
+            if (onConfirm) onConfirm();
+        }
+    } else {
+        alert(message.replace(/<[^>]*>/g, ''));
+    }
+}
+</script>
+
+<style>
+/* ═══════════════════════════════════════════════
+   CSS 变量 & 设计系统
+   ═══════════════════════════════════════════════ */
+:root {
+    --color-primary: #4f6ef7;
+    --color-primary-light: #eef1ff;
+    --color-accent: #6366f1;
+    --color-accent-hover: #4f46e5;
+    --color-danger: #ef4444;
+    --color-danger-light: #fef2f2;
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-bg: #f8fafc;
+    --color-surface: #ffffff;
+    --color-border: #e2e8f0;
+    --color-text: #1e293b;
+    --color-text-muted: #94a3b8;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.06);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.08);
+    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ═══════════════════════════════════════════════
+   页面标题
+   ═══════════════════════════════════════════════ */
+.page-header {
+    margin-bottom: 1.5rem;
+}
+.page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-text);
+    margin-bottom: 0.25rem;
+    letter-spacing: -0.02em;
+}
+.page-subtitle {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    margin: 0;
+}
+.stats-pills {
+    display: flex;
+    gap: 0.5rem;
+}
+.stat-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════
+   工具栏
+   ═══════════════════════════════════════════════ */
+.toolbar-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-sm);
+}
+.search-box {
+    position: relative;
+}
+.search-icon {
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    z-index: 5;
+}
+.search-input {
+    padding-left: 2.25rem;
+    padding-right: 2.5rem;
+    border-radius: 50px;
+    border: 1.5px solid var(--color-border);
+    font-size: 0.875rem;
+    transition: var(--transition);
+    background: var(--color-bg);
+}
+.search-input:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(79,110,247,0.1);
+    background: var(--color-surface);
+}
+.search-clear {
+    position: absolute;
+    right: 0.625rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: var(--transition);
+}
+.search-clear:hover {
+    background: var(--color-border);
+    color: var(--color-text);
+}
+.action-group {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+.action-group .btn {
+    border-radius: 50px;
+    padding: 0.5rem 1.125rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    transition: var(--transition);
+    white-space: nowrap;
+}
+.btn-accent {
+    background: var(--color-accent);
+    color: #fff;
+    border: none;
+}
+.btn-accent:hover {
+    background: var(--color-accent-hover);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99,102,241,0.35);
+}
+.btn-light {
+    background: var(--color-bg);
+    border: 1.5px solid var(--color-border);
+    color: var(--color-text);
+}
+.btn-light:hover {
+    background: var(--color-surface);
+    border-color: #cbd5e1;
+    box-shadow: var(--shadow-sm);
+}
+
+/* ═══════════════════════════════════════════════
+   表格卡片
+   ═══════════════════════════════════════════════ */
+.table-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+
+/* 批量操作栏 */
+.batch-bar {
+    background: var(--color-primary-light);
+    border-bottom: 1px solid #dde3ff;
+    padding: 0.625rem 1.25rem;
+    animation: slideDown 0.25s ease;
+}
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.batch-info {
+    font-size: 0.875rem;
+    color: var(--color-primary);
+}
+.text-accent { color: var(--color-accent) !important; }
+
+/* 表格 */
+.data-table {
+    margin: 0;
+    font-size: 0.875rem;
+}
+.data-table thead th {
+    background: var(--color-bg);
+    border-bottom: 2px solid var(--color-border);
+    font-weight: 600;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-text-muted);
+    padding: 0.75rem 1rem;
+    white-space: nowrap;
+}
+.data-table tbody td {
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+.camera-row {
+    transition: background 0.15s ease;
+}
+.camera-row:hover {
+    background: #fafbff;
+}
+
+/* 复选框 */
+.col-check {
+    width: 48px;
+}
+.checkbox-wrapper {
+    position: relative;
+    width: 1.125rem;
+    height: 1.125rem;
+}
+.checkbox-wrapper input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+}
+.checkbox-wrapper label {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 2px solid #cbd5e1;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.checkbox-wrapper input:checked + label {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+    background-size: 80%;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+.checkbox-wrapper input:indeterminate + label {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round'%3E%3Cline x1='5' y1='12' x2='19' y2='12'%3E%3C/line%3E%3C/svg%3E");
+    background-size: 80%;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* 编码徽章 */
+.code-badge {
+    display: inline-block;
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    letter-spacing: 0.02em;
+}
+
+/* 备注文本 */
+.remark-text {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    max-width: 200px;
+    display: inline-block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 等宽文本 */
+.text-mono {
+    font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+    font-size: 0.8rem;
+}
+
+/* 行操作按钮 */
+.col-actions {
+    width: 120px;
+}
+.row-actions {
+    display: flex;
+    gap: 0.25rem;
+}
+.action-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--color-text-muted);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.action-icon:hover {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+}
+.action-danger:hover {
+    background: var(--color-danger-light);
+    color: var(--color-danger);
+}
+
+/* 空状态 */
+.empty-state {
+    text-align: center;
+    padding: 3rem 2rem !important;
+}
+.empty-icon {
+    font-size: 3rem;
+    color: #dde3ff;
+    margin-bottom: 0.75rem;
+}
+.empty-title {
+    font-weight: 600;
+    color: var(--color-text);
+    margin-bottom: 0.25rem;
+}
+.empty-hint {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    margin: 0;
+}
+
+/* 表格底部 */
+.table-footer {
+    border-top: 1px solid var(--color-border);
+    padding: 0.625rem 1.25rem;
+    background: var(--color-bg);
+}
+
+/* ═══════════════════════════════════════════════
+   分页
+   ═══════════════════════════════════════════════ */
+.pagination-wrapper {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+.pagination-custom {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 0.25rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 50px;
+    padding: 0.25rem;
+    box-shadow: var(--shadow-sm);
+}
+.page-link-custom {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50px;
+    text-decoration: none;
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: var(--transition);
+    padding: 0 0.5rem;
+}
+.page-link-custom:hover {
+    background: var(--color-bg);
+    color: var(--color-text);
+}
+.page-item-custom.active .page-link-custom {
+    background: var(--color-accent);
+    color: #fff;
+}
+.page-item-custom.disabled .page-link-custom {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* ═══════════════════════════════════════════════
+   现代模态框
+   ═══════════════════════════════════════════════ */
+.modal-modern .modal-content {
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+.modal-modern .modal-header {
+    border-bottom: 1px solid var(--color-border);
+    padding: 1rem 1.5rem;
+    background: var(--color-bg);
+}
+.modal-modern .modal-title {
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+.modal-modern .modal-body {
+    padding: 1.5rem;
+}
+.modal-modern .modal-footer {
+    border-top: 1px solid var(--color-border);
+    padding: 0.875rem 1.5rem;
+    background: var(--color-bg);
+}
+.modal-modern .btn-close {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 50%;
+    background-size: 60%;
+    opacity: 0.5;
+    transition: var(--transition);
+}
+.modal-modern .btn-close:hover {
+    opacity: 1;
+    background-color: var(--color-border);
+}
+
+/* 骨架屏 */
+.skeleton-loading {
+    padding: 1rem 0;
+}
+.skeleton-line {
+    height: 1rem;
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 4px;
+    margin-bottom: 0.75rem;
+}
+.skeleton-line-sm { width: 40%; }
+.skeleton-line-lg { width: 90%; }
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* 上传区域 */
+.upload-zone {
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 2rem;
+    text-align: center;
+    transition: var(--transition);
+    cursor: pointer;
+}
+.upload-zone:hover,
+.upload-zone.dragover {
+    border-color: var(--color-accent);
+    background: var(--color-primary-light);
+}
+.upload-icon {
+    font-size: 2.5rem;
+    color: var(--color-text-muted);
+    display: block;
+    margin-bottom: 0.5rem;
+}
+.upload-text {
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    margin: 0;
+}
+
+/* 软警告 */
+.alert-soft {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: var(--radius-sm);
+    color: #92400e;
+    font-size: 0.85rem;
+}
+
+/* 列选择列表 */
+.column-check-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+.column-check-item {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.875rem;
+    user-select: none;
+}
+.column-check-item:hover {
+    background: var(--color-bg);
+}
+.column-check-item input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--color-accent);
+}
+.column-label {
+    font-weight: 500;
+}
+
+/* ═══════════════════════════════════════════════
+   响应式
+   ═══════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    .page-header { margin-bottom: 1rem; }
+    .page-title { font-size: 1.25rem; }
+    .action-group { justify-content: flex-start; }
+    .action-group .btn span { display: none; }
+    .action-group .btn { padding: 0.5rem 0.75rem; }
+    .toolbar-card { padding: 0.875rem; }
+    .table-card { border-radius: var(--radius-md); }
+    .data-table thead th { font-size: 0.7rem; padding: 0.5rem 0.5rem; }
+    .data-table tbody td { padding: 0.5rem; }
+    .row-actions { flex-wrap: nowrap; }
+}
+</style>
+{% endblock %}

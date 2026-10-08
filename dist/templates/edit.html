@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}编辑相机 - {{ camera.code }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-pencil-square"></i> 编辑相机信息
+                    <small class="text-muted ms-2">{{ camera.code }}</small>
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('edit', camera_id=camera.id) }}">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">相机编码 <span class="text-danger">*</span></label>
+                            <input type="text" name="code" class="form-control"
+                                   value="{{ camera.code }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">相机类型</label>
+                            <select name="camera_type" class="form-select">
+                                <option value="">请选择</option>
+                                {% set types = ['枪机','球机','人像','结构化','微卡','双舱','全局','高点','全景'] %}
+                                {% for t in types %}
+                                    <option {% if camera.camera_type == t %}selected{% endif %}>{{ t }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">相机名称（751-2024）<span class="text-danger">*</span></label>
+                            <input type="text" name="name_751_2024" class="form-control"
+                                   value="{{ camera.name_751_2024 }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">相机名称（751-2008）<span class="text-danger">*</span></label>
+                            <input type="text" name="name_751_2008" class="form-control"
+                                   value="{{ camera.name_751_2008 }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">IP地址</label>
+                            <input type="text" name="ip_address" class="form-control"
+                                   value="{{ camera.ip_address }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">经度</label>
+                            <input type="text" name="longitude" class="form-control"
+                                   value="{{ camera.longitude }}">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">纬度</label>
+                            <input type="text" name="latitude" class="form-control"
+                                   value="{{ camera.latitude }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">地理位置</label>
+                            <input type="text" name="location" class="form-control"
+                                   value="{{ camera.location }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">所属辖区</label>
+                            <input type="text" name="district" class="form-control"
+                                   value="{{ camera.district }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">运营商</label>
+                            <input type="text" name="operator" class="form-control"
+                                   value="{{ camera.operator }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">运维单位</label>
+                            <input type="text" name="maintenance_unit" class="form-control"
+                                   value="{{ camera.maintenance_unit }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">运维人员</label>
+                            <input type="text" name="maintenance_person" class="form-control"
+                                   value="{{ camera.maintenance_person }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">运维人员电话</label>
+                            <input type="text" name="maintenance_phone" class="form-control"
+                                   value="{{ camera.maintenance_phone }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">运维单位责任人</label>
+                            <input type="text" name="unit_manager" class="form-control"
+                                   value="{{ camera.unit_manager }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">单位责任人电话</label>
+                            <input type="text" name="manager_phone" class="form-control"
+                                   value="{{ camera.manager_phone }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">更新日期 <span class="text-danger">*</span></label>
+                            <input type="date" name="update_date" class="form-control"
+                                   value="{{ camera.update_date }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">备注</label>
+                            <textarea name="remark" class="form-control" rows="2">{{ camera.remark }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="text-end mt-4">
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary">取消</a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-lg"></i> 保存修改
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
