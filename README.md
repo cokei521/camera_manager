@@ -85,3 +85,27 @@ camera_manager/
 - **Excel导入**：支持从Excel文件批量导入相机名称信息
 - **动态加载**：表格数据分页加载，提高大数据量下的性能
 
+###  编译wind版本dist 目录结构：
+
+```
+dist
+├── 相机管理系统.exe    ← 主程序（74MB）
+├── camera.db           ← SQLite 数据库（含现有数据）
+└── templates\          ← HTML 模板目录
+├── base.html
+├── index.html
+├── add.html
+└── edit.html
+```
+###  使用方法：
+
+将 dist 文件夹整体复制到任意 Windows 电脑
+双击运行 相机管理系统.exe
+在浏览器打开 http://localhost:5000
+数据库文件 camera.db 会随程序运行自动生成到同目录
+
+###  注意事项：
+
+程序使用 Flask 内置开发服务器，仅供本地单机使用
+如需后台运行，可以双击图标后最小化窗口
+数据库文件默认存放在 .exe 同目录下，如需重置可删除 camera.db 后重新启动程序
