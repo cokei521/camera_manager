@@ -99,7 +99,7 @@ dist
 ```
 ###  使用方法：
 
-python:
+## python:
 
 ```bash
 pip install -r requirements.txt
@@ -107,7 +107,7 @@ python app.py
 ```
 在浏览器打开 http://localhost:5000
 
-wind版本:
+## wind版本:
 
 将 dist 文件夹整体复制到任意 Windows 电脑
 
@@ -122,5 +122,7 @@ wind版本:
 ###  注意事项：
 
 程序使用 Flask 内置开发服务器
+
 如需后台运行，可以双击图标后最小化窗口
+
 数据库文件默认存放在 .exe 同目录下，如需重置可删除 camera.db 后重新启动程序
