@@ -107,6 +107,26 @@ python app.py
 ```
 在浏览器打开 http://localhost:5000
 
+## 创建 systemd 服务（推荐生产环境）
+
+创建服务文件 /etc/systemd/system/myapp.service
+
+```bash
+[Unit]
+Description=My Python App
+After=network.target
+
+[Service]
+User=你的用户名
+WorkingDirectory=/path/to/your/app
+ExecStart=/usr/bin/python3 /path/to/your/app/app.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+```
+
 ## wind版本:
 
 将 dist 文件夹整体复制到任意 Windows 电脑
