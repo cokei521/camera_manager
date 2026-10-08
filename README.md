@@ -103,6 +103,7 @@ dist
 双击运行 相机管理系统.exe
 在浏览器打开 http://localhost:5000
 数据库文件 camera.db 会随程序运行自动生成到同目录
+演示地址：[相机管理](https://u8ok.eu.cc)
 
 ###  注意事项：
 
